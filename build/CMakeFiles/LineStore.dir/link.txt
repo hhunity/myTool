@@ -1,2 +1,0 @@
-/Library/Developer/CommandLineTools/usr/bin/ar qc libLineStore.a CMakeFiles/LineStore.dir/LineStore.cpp.o
-/Library/Developer/CommandLineTools/usr/bin/ranlib libLineStore.a

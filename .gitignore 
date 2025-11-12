@@ -1,0 +1,15 @@
+# === CMake build directories ===
+build/
+build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+
+# === IDE-specific ===
+.vscode/
+.idea/
+
+# === macOS specific ===
+.DS_Store
