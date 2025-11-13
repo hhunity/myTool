@@ -9,8 +9,43 @@
 #include <thread>
 #include <vector>
 #include <array>
+#include <fstream>
+#include <array>
+#include <string>
+#include <nlohmann/json.hpp>
 
 using namespace ftxui;
+
+// JSON: { "inputs": ["...", "...", "...", "..."] }
+bool LoadInitialValuesFromJson(const std::string& path,
+                               std::array<std::string, 4>& values) {
+    // デフォルト値
+    values = { "input1-default", "input2-default", "input3-default", "input4-default" };
+
+    std::ifstream ifs(path);
+    if (!ifs) {
+        std::cerr << "config.json が開けませんでした: " << path << "\n";
+        return false;
+    }
+
+    try {
+        nlohmann::json j;
+        ifs >> j;
+
+        if (j.contains("inputs") && j["inputs"].is_array()) {
+            auto arr = j["inputs"];
+            for (size_t i = 0; i < 4 && i < arr.size(); ++i) {
+                if (arr[i].is_string()) {
+                    values[i] = arr[i].get<std::string>();
+                }
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "JSONパースに失敗しました: " << e.what() << "\n";
+        return false;
+    }
+}
 
 // メニューの結果
 enum class MenuResult {
@@ -99,20 +134,27 @@ MenuResult ShowMenu() {
 // 4つの入力欄を持つ画面を出して、OKで確定して文字列を返す
 // 戻り値: true = OK, false = Cancel
 //---------------------------------------------------------
-bool ShowInputForm(std::array<std::string, 4>& out_values) {
+// 4つの入力欄を持つ画面を出して、OKで確定して文字列を返す
+// initial_values: 入力欄の初期値
+// out_values    : OKしたときに確定値を書き出す
+bool ShowInputForm(const std::array<std::string, 4>& initial_values,
+                   std::array<std::string, 4>& out_values) {
     auto screen = ScreenInteractive::TerminalOutput();
 
-    std::string f1, f2, f3, f4;
+    // ★ 初期値をセット
+    std::string f1 = initial_values[0];
+    std::string f2 = initial_values[1];
+    std::string f3 = initial_values[2];
+    std::string f4 = initial_values[3];
+
     bool done = false;
     bool canceled = false;
 
-    // 4つの入力コンポーネント
     auto input1 = Input(&f1, "Input 1");
     auto input2 = Input(&f2, "Input 2");
     auto input3 = Input(&f3, "Input 3");
     auto input4 = Input(&f4, "Input 4");
 
-    // OK / Cancel ボタン
     auto button_ok = Button(" OK ", [&] {
         done = true;
         canceled = false;
@@ -124,13 +166,11 @@ bool ShowInputForm(std::array<std::string, 4>& out_values) {
         screen.Exit();
     });
 
-    // コンテナにまとめる（Tabでフォーカス移動可能）
     auto container = Container::Vertical({
         input1, input2, input3, input4,
         button_ok, button_cancel,
     });
 
-    // レイアウト（見た目）
     auto layout = Renderer(container, [&] {
         return vbox({
                    text("Input 4 values") | bold | center,
@@ -151,11 +191,9 @@ bool ShowInputForm(std::array<std::string, 4>& out_values) {
                border;
     });
 
-    // マウス無効＋イベント処理
     auto ui = CatchEvent(layout, [&](Event e) {
         if (e.is_mouse()) {
-            // マウス操作は全部無効にする
-            return true;
+            return true; // マウス無効
         }
         return false;
     });
@@ -163,7 +201,7 @@ bool ShowInputForm(std::array<std::string, 4>& out_values) {
     screen.Loop(ui);
 
     if (!done || canceled) {
-        return false;  // キャンセル扱い
+        return false;
     }
 
     out_values[0] = f1;
@@ -172,13 +210,15 @@ bool ShowInputForm(std::array<std::string, 4>& out_values) {
     out_values[3] = f4;
     return true;
 }
-
 //---------------------------------------------------------
 int main() {
     using namespace std::chrono_literals;
 
+    // 起動時に JSON から初期値読込
+    std::array<std::string, 4> initial_values;
+    LoadInitialValuesFromJson("config.json", initial_values);
+
     while (true) {
-        // 1. メインメニュー表示
         MenuResult r = ShowMenu();
         if (r == MenuResult::Exit) {
             std::cout << "アプリケーションを終了します。\n";
@@ -210,9 +250,8 @@ int main() {
             std::getline(std::cin, dummy);
         }
         else if (r == MenuResult::RunEchoInputs) {
-            // 2-2. 4つの入力フォームを出す
             std::array<std::string, 4> values;
-            bool ok = ShowInputForm(values);
+            bool ok = ShowInputForm(initial_values, values);
             if (!ok) {
                 std::cout << "\n入力がキャンセルされました。Enter でメニューに戻ります..."
                           << std::flush;
@@ -220,8 +259,8 @@ int main() {
                 std::getline(std::cin, dummy);
                 continue;
             }
-
-            // 入力結果を表示
+            
+                        // 入力結果を表示
             std::cout << "\n=== 入力された文字列 ===\n";
             for (int i = 0; i < 4; ++i) {
                 std::cout << "  [" << (i + 1) << "] " << values[i] << "\n";
@@ -251,8 +290,9 @@ int main() {
                       << std::flush;
             std::string dummy;
             std::getline(std::cin, dummy);
+            // OKで確定した値を initial_values にも反映しておくと、
+            // 次回入力画面を開いたときに「前回の入力」が初期値になる。
+            initial_values = values;
         }
     }
-
-    return 0;
 }

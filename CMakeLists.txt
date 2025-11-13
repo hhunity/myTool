@@ -28,6 +28,14 @@ if(NOT ftxui_POPULATED)
   add_subdirectory(${ftxui_SOURCE_DIR} ${ftxui_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
+# --- nlohmann/json を GitHub から取得 ---
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.3   # 安定版
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
 #add_subdirectory(lineStore)
 #add_subdirectory(app)
 # ---- main 実行ファイル ----
@@ -36,6 +44,7 @@ add_executable(demo ftxui/main.cpp)
 #依存関係のリンク
 #target_link_libraries(demo PRIVATE LineStore ${OpenCV_LIBS})
 target_link_libraries(demo PRIVATE ftxui::component)
+target_link_libraries(demo PRIVATE nlohmann_json::nlohmann_json)
 
 message(STATUS "...")
 
