@@ -14,8 +14,28 @@ set(OpenCV_DIR "/opt/homebrew/lib/cmake/opencv4")
 # 成功すると OpenCV_INCLUDE_DIRS と OpenCV_LIBS が定義される。
 find_package(OpenCV REQUIRED)
 
-add_subdirectory(lineStore)
-add_subdirectory(app)
+# ---- FFXUI -----
+include(FetchContent)
+
+FetchContent_Declare(ftxui
+  GIT_REPOSITORY https://github.com/ArthurSonzogni/ftxui
+  GIT_TAG v5.0.0
+)
+
+FetchContent_GetProperties(ftxui)
+if(NOT ftxui_POPULATED)
+  FetchContent_Populate(ftxui)
+  add_subdirectory(${ftxui_SOURCE_DIR} ${ftxui_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
+#add_subdirectory(lineStore)
+#add_subdirectory(app)
+# ---- main 実行ファイル ----
+#実行ファイルの登録
+add_executable(demo ftxui/main.cpp)
+#依存関係のリンク
+#target_link_libraries(demo PRIVATE LineStore ${OpenCV_LIBS})
+target_link_libraries(demo PRIVATE ftxui::component)
 
 message(STATUS "...")
 

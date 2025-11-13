@@ -1,5 +1,5 @@
-# === CMake build directories ===
 build/
+build/cmake_install.cmake
 build-*/
 CMakeFiles/
 CMakeCache.txt
@@ -12,4 +12,5 @@ Makefile
 .idea/
 
 # === macOS specific ===
+.DS_Store
 .DS_Store
