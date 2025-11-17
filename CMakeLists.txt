@@ -7,6 +7,9 @@ cmake_minimum_required(VERSION 3.16)
 #このプロジェクトの名前を LineStoreDemo に。CXX はC++プロジェクトであることを示す。
 project(LineStoreDemo CXX)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # ---- OpenCV 設定 ----
 # Homebrew のパスを明示（自動で見つからない場合用）
 set(OpenCV_DIR "/opt/homebrew/lib/cmake/opencv4")
@@ -36,15 +39,18 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-#add_subdirectory(lineStore)
-#add_subdirectory(app)
+add_subdirectory(lineStore)
+add_subdirectory(ftxui)
+add_subdirectory(app)
+
 # ---- main 実行ファイル ----
 #実行ファイルの登録
-add_executable(demo ftxui/main.cpp)
+# add_executable(demo app/main.cpp)
+
 #依存関係のリンク
-#target_link_libraries(demo PRIVATE LineStore ${OpenCV_LIBS})
-target_link_libraries(demo PRIVATE ftxui::component)
-target_link_libraries(demo PRIVATE nlohmann_json::nlohmann_json)
+# target_link_libraries(demo PRIVATE LineStore ${OpenCV_LIBS})
+# target_link_libraries(demo PRIVATE ftxui::component)
+# target_link_libraries(demo PRIVATE nlohmann_json::nlohmann_json)
 
 message(STATUS "...")
 

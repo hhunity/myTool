@@ -1,35 +1,29 @@
 {
-  "version": 5,
+  "version": 3,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 19
+    "minor": 21
   },
+
   "configurePresets": [
     {
       "name": "debug",
-      "displayName": "Debug build",
-      "description": "Debug build with debug symbols",
-      "generator": "Ninja", 
-      "binaryDir": "${sourceDir}/build/debug",
+      "generator": "Ninja",
+      "binaryDir": "build/debug",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "OpenCV_DIR": "/opt/homebrew/lib/cmake/opencv4"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
       "name": "release",
-      "displayName": "Release build",
-      "description": "Optimized build for release",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/release",
+      "binaryDir": "build/release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "OpenCV_DIR": "/opt/homebrew/lib/cmake/opencv4"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     }
   ],
+
   "buildPresets": [
     {
       "name": "debug",
@@ -39,6 +33,5 @@
       "name": "release",
       "configurePreset": "release"
     }
-  ],
-  "testPresets": []
+  ]
 }

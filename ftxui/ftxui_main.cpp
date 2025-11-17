@@ -1,6 +1,9 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/terminal.hpp>
+#include <ftxui/screen/screen.hpp>
+#include <ftxui/dom/elements.hpp>
 
 #include <chrono>
 #include <iostream>
@@ -76,7 +79,7 @@ MenuResult ShowMenu() {
     auto screen = ScreenInteractive::TerminalOutput();
 
     std::vector<std::string> entries = {
-        "1) 10秒間 cout を出し続ける",
+        "1) 10秒間 cout を出し続ける2",
         "2) 4つの文字列を入力して、それを10秒間表示",
         "3) Exit",
     };
@@ -210,8 +213,9 @@ bool ShowInputForm(const std::array<std::string, 4>& initial_values,
     out_values[3] = f4;
     return true;
 }
+
 //---------------------------------------------------------
-int main() {
+void ftxui_main() {
     using namespace std::chrono_literals;
 
     // 起動時に JSON から初期値読込

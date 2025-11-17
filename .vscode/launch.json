@@ -2,17 +2,17 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug demo",
-      "type": "cppdbg",
+      "name": "CMake: Debug (lldb)",
+      "type": "lldb",
       "request": "launch",
-      "program": "${workspaceFolder}/build/app/demo",  // 実行ファイルのパス
-      "args": ["test.png"],                            // コマンドライン引数
-      "cwd": "${workspaceFolder}",                     // 実行時の作業フォルダ
-      "stopAtEntry": false,
-      "MIMode": "lldb",                                // macOSなら lldb
-      "environment": [],
-      "externalConsole": false,
-      "preLaunchTask": "build-debug"                   // 任意: ビルドタスク名
+
+      // CMake Tools が教えてくれる実行ファイルパス
+      "program": "${command:cmake.launchTargetPath}",
+
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "terminal": "integrated",
+      "stopOnEntry": false
     }
   ]
 }
