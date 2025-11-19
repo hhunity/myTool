@@ -1,3 +1,50 @@
+#include <chrono>
+
+class CallCounter {
+public:
+    CallCounter()
+        : count_(0), started_(false)
+    {}
+
+    // 外部から明示的に開始する
+    void start() {
+        count_ = 0;
+        started_ = true;
+        start_ = std::chrono::steady_clock::now();
+    }
+
+    // 1回呼ばれたことを記録する
+    void tick() {
+        if (started_) {
+            ++count_;
+        }
+    }
+
+    // 1秒経ったかチェックして、経ってたら回数を返してリセット
+    // 1秒経ってなければ -1
+    int get_and_reset_if_ready() {
+        if (!started_) return -1;
+
+        using namespace std::chrono;
+        auto now = steady_clock::now();
+        auto elapsed = duration_cast<milliseconds>(now - start_);
+
+        if (elapsed.count() >= 1000) {
+            int result = count_;
+            count_ = 0;
+            start_ = now;
+            return result;
+        }
+        return -1;
+    }
+
+private:
+    int count_;
+    bool started_;
+    std::chrono::steady_clock::time_point start_;
+};
+
+
 #include <string>
 #include <chrono>
 #include <ctime>
