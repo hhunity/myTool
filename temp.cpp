@@ -1,3 +1,22 @@
+void wait_usec(int usec)
+{
+    using namespace std::chrono;
+
+    auto start = high_resolution_clock::now();
+    auto end   = start + microseconds(usec);
+
+    // 9割までは sleep_for で雑に進める
+    auto coarse = end - microseconds(50); // 最後の50µsはスピン
+
+    while (high_resolution_clock::now() < coarse) {
+        std::this_thread::sleep_for(std::chrono::microseconds(5));
+    }
+
+    // 残りは busy-wait で正確に合わせる
+    while (high_resolution_clock::now() < end) {}
+}
+
+
 #include <chrono>
 
 class CallCounter {
