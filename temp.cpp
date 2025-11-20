@@ -1,3 +1,23 @@
+
+#include <Windows.h>
+
+void sleep_us_hrtimer(long usec)
+{
+    HANDLE timer = CreateWaitableTimerEx(
+        nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+
+    LARGE_INTEGER li;
+    li.QuadPart = -usec * 10;  // 1us = 10 * 100ns
+
+    SetWaitableTimerEx(
+        timer, &li, 0, nullptr, nullptr, nullptr,
+        CREATE_WAITABLE_TIMER_HIGH_RESOLUTION);
+
+    WaitForSingleObject(timer, INFINITE);
+    CloseHandle(timer);
+}
+
+
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
