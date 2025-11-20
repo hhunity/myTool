@@ -1,3 +1,36 @@
+
+#include <mutex>
+#include <condition_variable>
+
+class UseCounter {
+public:
+    // 処理を開始するときに呼ぶ
+    void acquire() {
+        std::lock_guard<std::mutex> lock(m_);
+        ++count_;
+    }
+
+    // 処理が終わったら呼ぶ
+    void release() {
+        std::lock_guard<std::mutex> lock(m_);
+        if (--count_ == 0) {
+            cv_.notify_all();   // 0 になったら待ってるスレッドを起こす
+        }
+    }
+
+    // 別スレッドから「0 になるまで待つ」
+    void wait_zero() {
+        std::unique_lock<std::mutex> lock(m_);
+        cv_.wait(lock, [&]{ return count_ == 0; });
+    }
+
+private:
+    int count_ = 0;
+    std::mutex m_;
+    std::condition_variable cv_;
+};
+
+
 void wait_usec(int usec)
 {
     using namespace std::chrono;
