@@ -1,4 +1,43 @@
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
 
+class UseCounter {
+public:
+    // 処理を開始するときに呼ぶ
+    void acquire() {
+        std::lock_guard<std::mutex> lock(m_);
+        ++count_;
+    }
+
+    // 処理が終わったら呼ぶ
+    void release() {
+        std::lock_guard<std::mutex> lock(m_);
+        if (--count_ == 0) {
+            cv_.notify_all();   // 0 になったら待ってるスレッドを起こす
+        }
+    }
+
+    // 0 になるまで無制限に待つ
+    void wait_zero() {
+        std::unique_lock<std::mutex> lock(m_);
+        cv_.wait(lock, [&]{ return count_ == 0; });
+    }
+
+    // 0 になるまで「最大 duration だけ」待つ
+    // 戻り値: true  = 0 になった
+    //         false = タイムアウト（まだ 0 じゃない）
+    template<class Rep, class Period>
+    bool wait_zero_for(const std::chrono::duration<Rep, Period>& d) {
+        std::unique_lock<std::mutex> lock(m_);
+        return cv_.wait_for(lock, d, [&]{ return count_ == 0; });
+    }
+
+private:
+    int count_ = 0;
+    std::mutex m_;
+    std::condition_variable cv_;
+};
 #include <mutex>
 #include <condition_variable>
 
