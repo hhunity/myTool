@@ -1,5 +1,65 @@
 
 #include <Windows.h>
+#include <iostream>
+
+bool sleep_us_hrtimer(long long usec)
+{
+    // 1. タイマー作成（High-Resolution 指定）
+    HANDLE hTimer = CreateWaitableTimerEx(
+        nullptr,                       // セキュリティ属性
+        nullptr,                       // 名前なし
+        CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, // 高分解能
+        TIMER_ALL_ACCESS
+    );
+
+    if (!hTimer) {
+        std::cerr << "CreateWaitableTimerEx failed. GetLastError = "
+                  << GetLastError() << std::endl;
+        return false;
+    }
+
+    // 2. 相対時間を 100ns 単位で指定
+    //    1us = 10 * 100ns なので usec * 10
+    LARGE_INTEGER dueTime;
+    dueTime.QuadPart = -usec * 10;  // ★★ マイナスが超重要 ★★
+
+    // 3. 一回だけ鳴るワンショットタイマーとしてセット
+    //    第3引数 period = 0 → 繰り返しなし
+    if (!SetWaitableTimer(
+        hTimer,
+        &dueTime,
+        0,
+        nullptr,
+        nullptr,
+        FALSE))
+    {
+        std::cerr << "SetWaitableTimer failed. GetLastError = "
+                  << GetLastError() << std::endl;
+        CloseHandle(hTimer);
+        return false;
+    }
+
+    // 4. 発火を待つ
+    DWORD dw = WaitForSingleObject(hTimer, INFINITE);
+    if (dw != WAIT_OBJECT_0) {
+        std::cerr << "WaitForSingleObject failed. Ret = "
+                  << dw << " GetLastError = " << GetLastError() << std::endl;
+        CloseHandle(hTimer);
+        return false;
+    }
+
+    CloseHandle(hTimer);
+    return true;
+}
+
+int main()
+{
+    std::cout << "start\n";
+    sleep_us_hrtimer(200);   // 200 usec のつもり
+    std::cout << "end\n";
+}
+
+#include <Windows.h>
 
 void sleep_us_hrtimer(long usec)
 {
