@@ -1,4 +1,21 @@
 
+#include <windows.h>
+#include <string>
+#include <iostream>
+
+std::string get_exe_path()
+{
+    char path[MAX_PATH];
+    DWORD len = GetModuleFileNameA(nullptr, path, MAX_PATH);
+    return std::string(path, len);
+}
+
+int main()
+{
+    std::cout << get_exe_path() << std::endl;
+}
+
+
 #include <iostream>
 
 #ifdef _WIN32
