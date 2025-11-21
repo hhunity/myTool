@@ -1,7 +1,7 @@
 
 # ---- main 実行ファイル ----
 #実行ファイルの登録
-add_executable(myApp cppFlow2.cpp)
+add_executable(myApp main.cpp)
 
 find_package(Taskflow REQUIRED)      # vcpkg 版
 find_package(TBB REQUIRED)           # 必要なら
@@ -13,6 +13,11 @@ target_link_libraries(myApp
     ftxui
     lineStore
 )
+
+# Windows のリソースファイルを追加
+if (WIN32)
+    target_sources(myApp PRIVATE version.rc)
+endif()
 
 target_link_libraries(myApp
     PRIVATE 

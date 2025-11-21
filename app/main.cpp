@@ -31,19 +31,14 @@ void watashi(T x)
     cout <<"値渡:"<< &x << endl;
 }
 
+#include "config.h"
+
 int main(int argc, char** argv) {
 
     int x = 2;
-
-    cout <<"x addr:"<< &x << endl;
-    watashi(x);
-    sansyou(x);
-    uhenchi(std::move(x));
-
-    myTest my {};
-    watashi(my);
-    sansyou(my);
-    uhenchi(std::move(my));
+    
+    std::cout << "APP_VERSION:" << PRODUCT_VERSION_STR << " BUILD_TIME:" << BUILD_TIME << " (" << GIT_HASH << ")\n";
+    std::cout << "FILE_VERSION:" << FILE_VERSION_STR << "\n";
 
     return 0;
 }
