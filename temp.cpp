@@ -1,4 +1,27 @@
 
+#include <iostream>
+
+#ifdef _WIN32
+#include <windows.h>
+std::string get_hostname() {
+    char buf[256];
+    DWORD size = sizeof(buf);
+    GetComputerNameA(buf, &size);
+    return buf;
+}
+#else
+#include <unistd.h>
+std::string get_hostname() {
+    char buf[256];
+    gethostname(buf, sizeof(buf));
+    return buf;
+}
+#endif
+
+int main() {
+    std::cout << get_hostname() << std::endl;
+}
+
 #include <Windows.h>
 #include <iostream>
 
