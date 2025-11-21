@@ -23,6 +23,10 @@
       ]
     },
     {
+      "name": "quill",
+      "default-features": true
+    },
+    {
       "name": "taskflow",
       "default-features": true
     },

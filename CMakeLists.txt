@@ -1,8 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
 # ----- define project and version for config.h ----
-project(myTool VERSION 0.1.0 LANGUAGES CXX)
+project(myApp VERSION 0.1.0 LANGUAGES CXX)
 # ----- define timestamp -----
 string(TIMESTAMP BUILD_TIME "%Y-%m-%d %H:%M:%S")
+
+# 
+#  VSCode に正しいコンパイル情報（include path、フラグ、定義、PCH などすべて）を教えるファイルを生成
+#  .vscode setting jsonに"C_Cpp.default.compileCommands": "build/debug/compile_commands.json"を書くこと
+# 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ---- git hash ----
 find_package(Git)
@@ -39,7 +45,19 @@ add_subdirectory(ftxui)
 add_subdirectory(app)
 
 # ----- install cmake --install build で Linux / Mac に自動インストール。
-install(TARGETS myApp RUNTIME DESTINATION bin)
+install(TARGETS app RUNTIME DESTINATION bin)
 # ----- asetfile ex xxx.jsonやリソースファイル linux,macは実行ファイルはbinにおいて,データはassetにおく
 #install(DIRECTORY assets/ DESTINATION share/myApp/assets)
 
+# ----- プリコンパイルヘッダ（PCH）
+#target_precompile_headers(app PRIVATE pch.hpp)
+# ----- Unity Build（自動的に複数ソースをまとめてコンパイル）
+#set_target_properties(app PROPERTIES UNITY_BUILD ON)
+
+# ----- test
+#enable_testing()
+#add_executable(test_linestore test_linestore.cpp)
+#add_test(NAME LineStoreTest COMMAND test_linestore)
+
+# ----- cppack
+#include(CPack)
