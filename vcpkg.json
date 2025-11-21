@@ -1,0 +1,34 @@
+{
+  "name": "mytool",
+  "version-string": "0.1.0",
+  "builtin-baseline": "2ad7bd06128280e02bfe02361d8ffd7d465cfcf0",
+  "dependencies": [
+    {
+      "name": "ftxui",
+      "default-features": true
+    },
+    {
+      "name": "nlohmann-json",
+      "default-features": true
+    },
+    {
+      "name": "opencv",
+      "default-features": true,
+      "features": [
+        "contrib",
+        "dnn",
+        "jpeg",
+        "png",
+        "tiff"
+      ]
+    },
+    {
+      "name": "taskflow",
+      "default-features": true
+    },
+    {
+      "name": "tbb",
+      "default-features": true
+    }
+  ]
+}

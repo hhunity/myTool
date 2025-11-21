@@ -3,25 +3,16 @@
 #実行ファイルの登録
 add_executable(myApp cppFlow2.cpp)
 
+find_package(Taskflow REQUIRED)      # vcpkg 版
+find_package(TBB REQUIRED)           # 必要なら
+find_package(nlohmann_json REQUIRED)
+
 #依存関係のリンク
 target_link_libraries(myApp
     PUBLIC
     ftxui
     lineStore
 )
-
-# ==============================
-# Taskflow を git から取ってくる
-# ==============================
-include(FetchContent)
-
-FetchContent_Declare(taskflow
-  GIT_REPOSITORY https://github.com/taskflow/taskflow.git
-  # 必要なら特定バージョンに固定
-  # GIT_TAG        v3.10.0
-)
-
-FetchContent_MakeAvailable(Taskflow)
 
 target_link_libraries(myApp
     PRIVATE 
