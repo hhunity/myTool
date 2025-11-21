@@ -91,6 +91,52 @@ public:
         enqueue_line(j.dump());
     }
 
+void init_file_index_from_existing()
+{
+    namespace fs = std::filesystem;
+
+    // base_path_ が空のときはとりあえず 0 で開始
+    if (base_path_.empty()) {
+        file_index_ = 0;
+        return;
+    }
+
+    // 連番ファイルを探す: base_path_ + "_00000.jsonl", "_00001.jsonl", ...
+    std::size_t idx = 0;
+    for (;; ++idx) {
+        std::string name = base_path_ + "_" + index_str(idx) + ".jsonl";
+        if (!fs::exists(name)) {
+            break;  // ここが「最初の存在しない index」
+        }
+    }
+
+    if (idx == 0) {
+        // 1つもファイルがない
+        file_index_ = 0;
+        return;
+    }
+
+    // 最後に存在するファイル
+    std::size_t last = idx - 1;
+    std::string last_name = base_path_ + "_" + index_str(last) + ".jsonl";
+    std::uintmax_t sz = 0;
+    try {
+        sz = fs::file_size(last_name);
+    } catch (...) {
+        // 取れなかったらとりあえず新しいファイルに逃がす
+        file_index_ = idx;
+        return;
+    }
+
+    if (sz < max_bytes_) {
+        // まだ余裕があるので、最後のファイルに追記開始
+        file_index_ = last;
+    } else {
+        // もう一杯なので、新しい index から開始
+        file_index_ = idx;
+    }
+}
+
     // run を切り替えたい時に使う（run_id を空にするだけ）
     void end_run()
     {
