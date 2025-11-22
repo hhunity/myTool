@@ -59,5 +59,94 @@ install(TARGETS app RUNTIME DESTINATION bin)
 #add_executable(test_linestore test_linestore.cpp)
 #add_test(NAME LineStoreTest COMMAND test_linestore)
 
-# ----- cppack
-#include(CPack)
+# ==============================
+# install() でパッケージ内容を定義
+# ==============================
+
+# 実行ファイル
+install(TARGETS app
+    RUNTIME DESTINATION bin
+)
+
+install(FILES ${CMAKE_SOURCE_DIR}/readme.md
+    DESTINATION share/mytool
+)
+
+# ==============================
+# CPack 設定
+# ==============================
+set(CPACK_PACKAGE_NAME "mytool")
+set(CPACK_PACKAGE_VENDOR "hiro")
+set(CPACK_PACKAGE_CONTACT "hiro@example.com")
+
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+
+# 出力パッケージ名: mytool-1.0.0-<OS>.zip
+set(CPACK_PACKAGE_FILE_NAME
+    "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME}"
+)
+
+# 形式（macOS / Linux / Windows すべて zip で統一）
+set(CPACK_GENERATOR "ZIP")
+
+# ==============================
+# macOS 用の設定 (.app + .dmg)
+# ==============================
+if(APPLE)
+    message(STATUS "Configuring CPack for macOS (DMG)")
+
+    # .app バンドル
+    set_target_properties(app PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/mac/Info.plist"
+    )
+
+    # .dmg を作る
+    set(CPACK_GENERATOR "DragNDrop")
+
+    # .dmg のファイル名
+    set(CPACK_PACKAGE_FILE_NAME
+        "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-macOS"
+    )
+
+    # .app を CPack に渡す
+    install(TARGETS app BUNDLE DESTINATION .)
+endif()
+
+# ==============================
+# Windows 用の設定 (.exe installer)
+# ==============================
+if (WIN32)
+    message(STATUS "Configuring CPack for Windows (NSIS)")
+
+    set(CPACK_GENERATOR "NSIS")
+
+    set(CPACK_PACKAGE_FILE_NAME
+        "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-win"
+    )
+
+    # インストール先
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "mytool")
+
+    # ショートカット作成
+    set(CPACK_NSIS_MENU_LINKS
+        "mytool.exe" "myTool Application"
+    )
+
+    # アンインストール設定
+    set(CPACK_NSIS_DISPLAY_NAME "mytool ${PROJECT_VERSION}")
+endif()
+
+# ==============================
+# Linux / その他 → ZIP のまま
+# ==============================
+if(UNIX AND NOT APPLE)
+    message(STATUS "Configuring CPack for Linux (ZIP)")
+    set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-linux")
+    set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
+endif()
+
+# 一部 OS・パスの注意
+include(CPack)
