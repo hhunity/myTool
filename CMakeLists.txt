@@ -35,6 +35,9 @@ set(APP_VERSION_BUILD ${BUILD_NUMBER})
 configure_file(config.h.in config.h)
 # ---- link config.h ----
 include_directories(${CMAKE_BINARY_DIR})
+# ---- link source_tree ----
+include_directories(${CMAKE_SOURCE_DIR})
+
 # ---- requar C++ version
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -42,6 +45,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # ---- ローカルサブディレクトリ ----
 add_subdirectory(lineStore)
 add_subdirectory(ftxui)
+add_subdirectory(server)
 add_subdirectory(app)
 
 # ----- install cmake --install build で Linux / Mac に自動インストール。

@@ -4,4 +4,4 @@ add_library(lineStore STATIC
     LineStore.hpp
 )
 
-find_package(OpenCV REQUIRED)
+find_package(OpenCV CONFIG REQUIRED)

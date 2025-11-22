@@ -33,6 +33,10 @@
     {
       "name": "tbb",
       "default-features": true
+    },
+    {
+      "name": "civetweb",
+      "default-features": true
     }
   ]
 }
