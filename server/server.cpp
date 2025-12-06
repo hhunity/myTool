@@ -1,6 +1,6 @@
 #include <iostream>
 #include <config.h>
-#include "server/http_server.hpp"
+#include "http_server.hpp"
 
 using namespace std;
 
@@ -30,7 +30,7 @@ void watashi(T x)
 }
 
 
-int main(int argc, char** argv) {
+int server_test(int argc, char** argv) {
 
     int x = 2;
 

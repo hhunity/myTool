@@ -46,6 +46,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(lineStore)
 add_subdirectory(ftxui)
 add_subdirectory(server)
+add_subdirectory(sandbox)
+add_subdirectory(opencv)
 add_subdirectory(app)
 
 # ----- install cmake --install build で Linux / Mac に自動インストール。

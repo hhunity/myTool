@@ -5,6 +5,7 @@
 
 add_library(server STATIC
     http_server.cpp
+    server.cpp
 )
 
 find_package(civetweb CONFIG REQUIRED)
