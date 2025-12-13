@@ -48,6 +48,7 @@ add_subdirectory(ftxui)
 add_subdirectory(server)
 add_subdirectory(sandbox)
 add_subdirectory(opencv)
+add_subdirectory(comms)
 add_subdirectory(app)
 
 # ----- install cmake --install build で Linux / Mac に自動インストール。

@@ -1,0 +1,10 @@
+#pragma once
+#define APP_VERSION_MAJOR 0
+#define APP_VERSION_MINOR 1
+#define APP_VERSION_PATCH 0
+#define APP_VERSION_BUILD  36
+#define FILE_VERSION_STR   "0.1.0.36"
+#define PRODUCT_VERSION_STR "0.1.0"
+#define BUILD_TIME "2025-11-29 17:26:37"
+#define GIT_HASH   "0106ab1"
+#define BUILD_TYPE ""

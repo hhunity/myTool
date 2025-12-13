@@ -37,6 +37,14 @@
     {
       "name": "civetweb",
       "default-features": true
+    },
+    {
+      "name": "cppzmq",
+      "default-features": true
+    },
+      {
+      "name": "zeromq",
+      "default-features": true
     }
   ]
 }
