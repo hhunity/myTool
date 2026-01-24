@@ -1,8 +1,19 @@
 // server.cpp
-#include <iostream>
-#include <string>
 #include "httplib.h"
+#include <algorithm>
+#include <chrono>
+#include <condition_variable>
+#include <cstdint>
 #include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <utility>
+#include <vector>
+#include "mpeg.h"
 
 #if defined(_WIN32)
   #include <windows.h>
@@ -13,6 +24,8 @@
   #include <unistd.h>
   #include <limits.h>
 #endif
+
+extern LatestJpegStore g_jpeg;
 
 static void add_cors(httplib::Response& res) {
   res.set_header("Access-Control-Allow-Origin", "*");
@@ -67,6 +80,58 @@ int main() {
         res.set_content(R"({"message":"hello from cpp-httplib"})", "application/json");
     });
 
+    // MJPEG ストリーム
+    svr.Get("/stream.mjpg", [](const httplib::Request& req, httplib::Response& res) {
+        static constexpr const char* boundary = "frame";
+        res.set_header("Cache-Control", "no-store");
+        res.set_header("Pragma", "no-cache");
+        res.set_header("Connection", "keep-alive");
+
+        const std::string ctype =
+            std::string("multipart/x-mixed-replace; boundary=") + boundary;
+
+        res.set_content_provider(
+            ctype,
+            [&req](size_t /*offset*/, httplib::DataSink& sink) -> bool {
+            uint64_t last_seq = 0;
+
+            while (true) {
+                // 切断チェック（環境により無い場合あり）
+                if (req.is_connection_closed && req.is_connection_closed()) break;
+
+                // 新フレームを待つ（1秒でタイムアウトしてループに戻る）
+                auto [p, seq] = wait_next_jpeg(last_seq, std::chrono::milliseconds(1000));
+                if (!p) {
+                // timeout or stop：stopなら抜ける、timeoutなら継続
+                // stop判定は g_jpeg.stop を見るのが確実
+                std::lock_guard<std::mutex> lk(g_jpeg.mtx);
+                if (g_jpeg.stop) break;
+                continue;
+                }
+
+                const std::string& jpeg = *p;
+                if (jpeg.empty()) { last_seq = seq; continue; }
+
+                std::string header;
+                header += "--";
+                header += boundary;
+                header += "\r\n";
+                header += "Content-Type: image/jpeg\r\n";
+                header += "Content-Length: " + std::to_string(jpeg.size()) + "\r\n\r\n";
+
+                if (!sink.write(header.data(), header.size())) break;
+                if (!sink.write(jpeg.data(), jpeg.size())) break;
+                if (!sink.write("\r\n", 2)) break;
+
+                last_seq = seq;
+            }
+
+            sink.done();
+            return true;
+            }
+        );
+    });
+
     auto exe_dir = get_executable_path().parent_path();
     auto public_dir = exe_dir / "public";
 
@@ -79,6 +144,8 @@ int main() {
         std::cerr << "Failed to mount: " << public_dir << "\n";
         return 1;
     }
+
+    std::thread player([&] { folder_player_thread( exe_dir / "frames", 120.0); });
 
     std::cout << "Listening on http://127.0.0.1:8080\n";
     svr.listen("127.0.0.1", 8080);

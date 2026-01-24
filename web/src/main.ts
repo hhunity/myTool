@@ -21,6 +21,10 @@ app.innerHTML = `
 
       <div style="height:10px"></div>
       <div class="mono" id="pct">0%</div>
+      <body style="margin:20px;font-family:system-ui">
+    <h1>MJPEG Test</h1>
+      <img src="/stream.mjpg" style="max-width:100%;border:1px solid #ccc;border-radius:12px" />
+    </body>
     </div>
   </div>
 `;
