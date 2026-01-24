@@ -1,0 +1,21 @@
+<!-- public/index.html -->
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>cpp-httplib + browser</title>
+  </head>
+  <body>
+    <h1>cpp-httplib minimal</h1>
+    <button id="btn">/api/hello を叩く</button>
+    <pre id="out"></pre>
+
+    <script>
+      document.getElementById("btn").addEventListener("click", async () => {
+        const r = await fetch("/api/hello");
+        const j = await r.json();
+        document.getElementById("out").textContent = JSON.stringify(j, null, 2);
+      });
+    </script>
+  </body>
+</html>

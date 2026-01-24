@@ -39,6 +39,10 @@
       "default-features": true
     },
     {
+      "name": "cpp-httplib",
+      "default-features": true
+    },
+    {
       "name": "cppzmq",
       "default-features": true
     },

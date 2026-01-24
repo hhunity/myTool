@@ -43,6 +43,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---- ローカルサブディレクトリ ----
+add_subdirectory(server2)
 add_subdirectory(lineStore)
 add_subdirectory(ftxui)
 add_subdirectory(server)
