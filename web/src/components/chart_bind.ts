@@ -42,7 +42,7 @@ export function initChartPanel() {
   }
 
   function applyData(j: ChartApiResponse) {
-
+    if (!Array.isArray(j.labels) ){}
     chart.update("none");
   }
 
