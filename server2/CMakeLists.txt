@@ -1,4 +1,4 @@
-add_executable(server2 main.cpp mpeg.cpp)
+add_executable(server2 main.cpp mjpeg.cpp)
 
 if(APPLE)
   find_library(COREFOUNDATION_FRAMEWORK CoreFoundation REQUIRED)

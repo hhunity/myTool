@@ -2,11 +2,9 @@
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -25,7 +23,7 @@ a:hover {
 body {
   margin: 0;
   display: flex;
-  place-items: center;
+  place-items: left;
   min-width: 320px;
   min-height: 100vh;
 }
@@ -82,6 +80,15 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+.btn.primary{
+  border-color: rgba(239,68,68,0.55);
+  background: rgba(239,68,68,0.18);
+}
+.btn.primary:hover{
+  background: rgba(239,68,68,0.26);
+  border-color: rgba(239,68,68,0.75);
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
@@ -93,4 +100,63 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+.live-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);  /* ← ここが半透明 */
+  backdrop-filter: blur(2px);        /* ← 任意：少しだけ“それっぽく” */
+  -webkit-backdrop-filter: blur(2px);
+  visibility: hidden;
+}
+
+.live-overlay-label{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color: rgba(255,255,255,0.85);
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.videoBox{
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.liveHeader{
+  display:flex;
+  flex-direction: column;   /* ここで改行（2段） */
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.liveTitle{
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  justify-content:flex-start;
+
+}
+.card { text-align: left; }
+.header { text-align: left; }
+.container { text-align: left; }
+.liveControls{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:10px;
+  flex-wrap: wrap;          /* 狭い時だけ折り返す */
+}
+
+.dot{
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  background:#999;
 }

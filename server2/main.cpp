@@ -13,7 +13,7 @@
 #include <thread>
 #include <utility>
 #include <vector>
-#include "mpeg.h"
+#include "mjpeg.h"
 
 #if defined(_WIN32)
   #include <windows.h>
@@ -132,6 +132,22 @@ int main() {
         );
     });
 
+    svr.Get("/api/live/heartbeat", [](const httplib::Request&, httplib::Response& res) {
+      uint64_t seq;
+      int64_t last_epoch_ms;
+      {
+        std::lock_guard<std::mutex> lk(g_jpeg.mtx);
+        seq = g_jpeg.seq;
+        last_epoch_ms = g_jpeg.last_epoch_ms;
+      }
+      res.set_header("Cache-Control", "no-store");
+      res.set_content(
+        std::string("{\"seq\":") + std::to_string(seq) +
+        ",\"last_epoch_ms\":" + std::to_string(last_epoch_ms) + "}",
+        "application/json"
+      );
+    });
+
     auto exe_dir = get_executable_path().parent_path();
     auto public_dir = exe_dir / "public";
 
@@ -145,7 +161,7 @@ int main() {
         return 1;
     }
 
-    std::thread player([&] { folder_player_thread( exe_dir / "frames", 120.0); });
+    std::thread player([&] { folder_player_thread( exe_dir / "frames", 30.0); });
 
     std::cout << "Listening on http://127.0.0.1:8080\n";
     svr.listen("127.0.0.1", 8080);
