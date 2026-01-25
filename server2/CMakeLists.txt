@@ -22,8 +22,7 @@ set(WEB_DIST_DIR "${WEB_DIR}/dist")
 find_program(NPM_EXECUTABLE npm REQUIRED)
 
 # （任意）npm install が毎回走るのが嫌なら後で最適化できます
-add_custom_target(vite_build
-  COMMAND "${NPM_EXECUTABLE}" install
+add_custom_target(vite_build ALL
   COMMAND "${NPM_EXECUTABLE}" run build
   WORKING_DIRECTORY "${WEB_DIR}"
   COMMENT "Building frontend (Vite)"
