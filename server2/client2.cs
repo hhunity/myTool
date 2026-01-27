@@ -1,4 +1,288 @@
 
+// Single-file sample: multi-endpoint + DI + share across screens (WPF想定)
+// - 接続ごとに EndpointStore + ApiClient を持つ（camA/camB...）
+// - 画面間共有は ConnectionManager(=Singleton) から key で取り出す
+// - BaseAddress は動的に変えず、毎回 new Uri(base, path) で絶対URIを作る
+
+using System;
+using System.Collections.Concurrent;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+namespace MultiEndpointSample
+{
+    // ----------------------------
+    // 1) 変更されうる「接続先」を保持する（1接続につき1個）
+    // ----------------------------
+    public sealed class EndpointStore
+    {
+        private readonly object _gate = new();
+        private Uri _baseUri = new Uri("http://localhost:8080/");
+
+        public Uri BaseUri
+        {
+            get { lock (_gate) return _baseUri; }
+        }
+
+        public bool TrySetBaseUrl(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            if (!Uri.TryCreate(text.Trim(), UriKind.Absolute, out var uri)) return false;
+            if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) return false;
+
+            // 末尾 / を揃える（事故防止）
+            var s = uri.ToString();
+            if (!s.EndsWith("/")) s += "/";
+
+            lock (_gate) _baseUri = new Uri(s, UriKind.Absolute);
+            return true;
+        }
+
+        public Uri Combine(string relativePath) => new Uri(BaseUri, relativePath);
+    }
+
+    // ----------------------------
+    // 2) 実際のAPI呼び出し（EndpointStore を見て毎回URIを作る）
+    // ----------------------------
+    public sealed class ApiClient
+    {
+        private readonly HttpClient _http;
+        private readonly EndpointStore _ep;
+
+        public ApiClient(HttpClient http, EndpointStore ep)
+        {
+            _http = http;
+            _ep = ep;
+        }
+
+        public Task<HttpResponseMessage> StartCaptureAsync(CancellationToken ct = default)
+        {
+            var uri = _ep.Combine("api/capture/start");
+            return _http.PostAsync(uri, content: null, ct);
+        }
+
+        public Task<HttpResponseMessage> StopCaptureAsync(CancellationToken ct = default)
+        {
+            var uri = _ep.Combine("api/capture/stop");
+            return _http.PostAsync(uri, content: null, ct);
+        }
+
+        public Task<HttpResponseMessage> GetStateAsync(CancellationToken ct = default)
+        {
+            var uri = _ep.Combine("api/state");
+            return _http.GetAsync(uri, ct);
+        }
+    }
+
+    // ----------------------------
+    // 3) 1接続ぶんの束（他画面でも同じ key で取得して使う）
+    // ----------------------------
+    public sealed class ConnectionSession
+    {
+        public string Key { get; }
+        public EndpointStore Endpoint { get; }
+        public ApiClient Api { get; }
+
+        public ConnectionSession(string key, EndpointStore endpoint, ApiClient api)
+        {
+            Key = key;
+            Endpoint = endpoint;
+            Api = api;
+        }
+    }
+
+    // ----------------------------
+    // 4) 接続を保持するレジストリ（Singleton）
+    //    画面間共有はここから key で取り出す
+    // ----------------------------
+    public sealed class ConnectionManager
+    {
+        private readonly IHttpClientFactory _httpFactory;
+        private readonly ConcurrentDictionary<string, ConnectionSession> _sessions = new();
+
+        public ConnectionManager(IHttpClientFactory httpFactory)
+        {
+            _httpFactory = httpFactory;
+        }
+
+        // key が同じなら同じ接続を返す（無ければ作る）
+        public ConnectionSession GetOrCreate(string key, string baseUrl)
+        {
+            return _sessions.GetOrAdd(key, _ =>
+            {
+                var ep = new EndpointStore();
+                if (!ep.TrySetBaseUrl(baseUrl))
+                    throw new ArgumentException($"Invalid baseUrl: {baseUrl}", nameof(baseUrl));
+
+                var http = _httpFactory.CreateClient(); // 共通設定は AddHttpClient 側で
+                var api = new ApiClient(http, ep);
+
+                return new ConnectionSession(key, ep, api);
+            });
+        }
+
+        public bool TryGet(string key, out ConnectionSession? session)
+            => _sessions.TryGetValue(key, out session);
+
+        public ConnectionSession GetRequired(string key)
+            => _sessions.TryGetValue(key, out var s)
+                ? s
+                : throw new InvalidOperationException($"No session for key='{key}'");
+
+        public bool Remove(string key) => _sessions.TryRemove(key, out _);
+    }
+
+    // ----------------------------
+    // 5) 「今どれを操作対象にしてるか」を共有したいとき用（Singleton）
+    // ----------------------------
+    public sealed class AppState
+    {
+        public string? CurrentConnectionKey { get; set; } // "camA" とか
+    }
+
+    // ----------------------------
+    // 6) 画面(ViewModel)側の利用例
+    //    ※ 他画面でも同様に ConnectionManager を注入して key で取る
+    // ----------------------------
+    public sealed class MainViewModel
+    {
+        private readonly ConnectionManager _cm;
+        private readonly AppState _state;
+
+        public MainViewModel(ConnectionManager cm, AppState state)
+        {
+            _cm = cm;
+            _state = state;
+        }
+
+        public void EnsureConnections()
+        {
+            // 例: 2台登録（設定画面から呼ぶ想定でもOK）
+            _cm.GetOrCreate("camA", "http://192.168.0.10:8080/");
+            _cm.GetOrCreate("camB", "http://192.168.0.11:8080/");
+            _state.CurrentConnectionKey ??= "camA";
+        }
+
+        public Task StartOnCurrentAsync(CancellationToken ct = default)
+        {
+            var key = _state.CurrentConnectionKey
+                      ?? throw new InvalidOperationException("No selected connection");
+            var s = _cm.GetRequired(key);
+            return s.Api.StartCaptureAsync(ct);
+        }
+    }
+
+    public sealed class SettingsViewModel
+    {
+        private readonly ConnectionManager _cm;
+        private readonly AppState _state;
+
+        public SettingsViewModel(ConnectionManager cm, AppState state)
+        {
+            _cm = cm;
+            _state = state;
+        }
+
+        public void SelectCurrent(string key)
+        {
+            _state.CurrentConnectionKey = key;
+        }
+
+        // 既存接続のURLを変えたい場合（EndpointStore を直接更新）
+        // ※ ここでは簡易に GetRequired して更新している
+        public bool TryUpdateBaseUrl(string key, string baseUrl)
+        {
+            var s = _cm.GetRequired(key);
+            return s.Endpoint.TrySetBaseUrl(baseUrl);
+        }
+    }
+
+    // ----------------------------
+    // 7) DIセットアップ例（WPFなら App.xaml.cs で同様に Host を持つ）
+    // ----------------------------
+    public static class DiSetup
+    {
+        public static IHost BuildHost()
+        {
+            return Host.CreateDefaultBuilder()
+                .ConfigureServices(services =>
+                {
+                    services.AddHttpClient();               // IHttpClientFactory
+                    services.AddSingleton<ConnectionManager>();
+                    services.AddSingleton<AppState>();
+
+                    // ViewModels（WindowをDI生成するならWindowもAddTransient）
+                    services.AddTransient<MainViewModel>();
+                    services.AddTransient<SettingsViewModel>();
+                })
+                .Build();
+        }
+    }
+}
+
+
+public sealed class ConnectionSession
+{
+    public string Key { get; }
+    public EndpointStore Endpoint { get; }
+    public ApiClient Api { get; }
+
+    public ConnectionSession(string key, EndpointStore endpoint, ApiClient api)
+    {
+        Key = key;
+        Endpoint = endpoint;
+        Api = api;
+    }
+}
+
+using System;
+using System.Collections.Concurrent;
+using System.Net.Http;
+
+public sealed class ConnectionFactory
+{
+    private readonly IHttpClientFactory _httpFactory;
+
+    // 必要なら再利用（同じKeyなら同じSessionを返す）
+    private readonly ConcurrentDictionary<string, ConnectionSession> _sessions = new();
+
+    public ConnectionFactory(IHttpClientFactory httpFactory)
+    {
+        _httpFactory = httpFactory;
+    }
+
+    public ConnectionSession GetOrCreate(string key, string baseUrl)
+    {
+        return _sessions.GetOrAdd(key, _ =>
+        {
+            var ep = new EndpointStore();              // 1接続に1個
+            if (!ep.TrySetBaseUrl(baseUrl)) throw new ArgumentException("Invalid baseUrl");
+
+            var http = _httpFactory.CreateClient();    // HttpClientはFactoryから
+            var api  = new ApiClient(http, ep);        // epを注入して束ねる
+
+            return new ConnectionSession(key, ep, api);
+        });
+    }
+
+    public bool TryRemove(string key) => _sessions.TryRemove(key, out _);
+}
+
+// 例：ユーザーが2つ登録した
+var s1 = _connFactory.GetOrCreate("camA", "http://192.168.0.10:8080/");
+var s2 = _connFactory.GetOrCreate("camB", "http://192.168.0.11:8080/");
+
+await s1.Api.StartAsync();
+await s2.Api.StartAsync();
+
+
+
+
+
+
 using System;
 using System.Threading;
 
