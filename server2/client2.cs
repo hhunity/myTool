@@ -1,4 +1,117 @@
 
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+
+public static class Busy
+{
+    /// <summary>
+    /// owner を操作不能にして、簡易プログレス（不定）ウィンドウを表示しつつ action を実行する。
+    /// XAML不要。呼ぶだけ。
+    /// </summary>
+    public static async Task RunAsync(
+        Window owner,
+        string message,
+        Func<CancellationToken, Task> action,
+        bool cancellable = true)
+    {
+        if (owner is null) throw new ArgumentNullException(nameof(owner));
+        if (action is null) throw new ArgumentNullException(nameof(action));
+
+        // UIスレッドで開く前提
+        if (!owner.Dispatcher.CheckAccess())
+        {
+            await owner.Dispatcher.InvokeAsync(() => { });
+        }
+
+        using var cts = new CancellationTokenSource();
+
+        // 簡易ウィンドウをコードだけで作る
+        var win = CreateBusyWindow(owner, message, cancellable, cts);
+
+        // 親を操作不能に（＝他ボタン押せない）
+        var prevEnabled = owner.IsEnabled;
+        owner.IsEnabled = false;
+
+        try
+        {
+            win.Show(); // modeless（UIは回る）
+            await action(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // キャンセルは必要なら無視/表示
+        }
+        finally
+        {
+            // 先に閉じる
+            try { win.Close(); } catch { /* ignore */ }
+
+            owner.IsEnabled = prevEnabled;
+        }
+    }
+
+    private static Window CreateBusyWindow(
+        Window owner,
+        string message,
+        bool cancellable,
+        CancellationTokenSource cts)
+    {
+        var text = new TextBlock
+        {
+            Text = message,
+            Margin = new Thickness(0, 0, 0, 10),
+            FontSize = 14
+        };
+
+        var bar = new ProgressBar
+        {
+            IsIndeterminate = true,
+            Height = 16,
+            Margin = new Thickness(0, 0, 0, 12)
+        };
+
+        var cancel = new Button
+        {
+            Content = "Cancel",
+            Width = 90,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            IsEnabled = cancellable
+        };
+        cancel.Click += (_, __) => cts.Cancel();
+
+        var panel = new StackPanel { Margin = new Thickness(16) };
+        panel.Children.Add(text);
+        panel.Children.Add(bar);
+        panel.Children.Add(cancel);
+
+        return new Window
+        {
+            Owner = owner,
+            Content = panel,
+            Width = 360,
+            Height = 160,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            WindowStyle = WindowStyle.ToolWindow,
+            ShowInTaskbar = false,
+            Topmost = true,
+            Title = "Processing..."
+        };
+    }
+}
+
+private async void StartButton_Click(object sender, RoutedEventArgs e)
+{
+    await Busy.RunAsync(this, "Starting capture...", async ct =>
+    {
+        await _api.StartCaptureAsync(ct); // あなたの通信
+    });
+}
+
+
 // Single-file sample: multi-endpoint + DI + share across screens (WPF想定)
 // - 接続ごとに EndpointStore + ApiClient を持つ（camA/camB...）
 // - 画面間共有は ConnectionManager(=Singleton) から key で取り出す
