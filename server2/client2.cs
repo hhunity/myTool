@@ -1,5 +1,164 @@
 
 using System;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+
+namespace YourApp
+{
+    public partial class BusyWindow : Window
+    {
+        private readonly CancellationTokenSource _cts;
+
+        public BusyWindow(string message, bool cancellable, CancellationTokenSource cts)
+        {
+            InitializeComponent();
+            _cts = cts;
+
+            VM = new BusyVM
+            {
+                Message = message,
+                IsCancellable = cancellable,
+                IsIndeterminate = true,
+                ProgressValue = 0,
+                ProgressText = ""
+            };
+            DataContext = VM;
+        }
+
+        public BusyVM VM { get; }
+
+        private void Cancel_Click(object sender, RoutedEventArgs e) => _cts.Cancel();
+    }
+
+    public sealed class BusyVM : INotifyPropertyChanged
+    {
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string? name = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        private string _message = "";
+        public string Message { get => _message; set { if (_message != value) { _message = value; OnPropertyChanged(); } } }
+
+        private bool _isIndeterminate;
+        public bool IsIndeterminate { get => _isIndeterminate; set { if (_isIndeterminate != value) { _isIndeterminate = value; OnPropertyChanged(); } } }
+
+        private double _progressValue;
+        public double ProgressValue { get => _progressValue; set { if (Math.Abs(_progressValue - value) > 0.0001) { _progressValue = value; OnPropertyChanged(); } } }
+
+        private string _progressText = "";
+        public string ProgressText { get => _progressText; set { if (_progressText != value) { _progressText = value; OnPropertyChanged(); } } }
+
+        private bool _isCancellable;
+        public bool IsCancellable { get => _isCancellable; set { if (_isCancellable != value) { _isCancellable = value; OnPropertyChanged(); } } }
+    }
+
+    public static class Busy
+    {
+        /// <summary>
+        /// 進捗が取れない処理（くるくる）
+        /// </summary>
+        public static Task RunAsync(Window owner, string message, Func<CancellationToken, Task> action, bool cancellable = true)
+            => RunAsync(owner, message, (ct, _) => action(ct), cancellable);
+
+        /// <summary>
+        /// 進捗を更新したい処理（%表示も可能）
+        /// report(0..100) を呼べば determinate に切り替える
+        /// </summary>
+        public static async Task RunAsync(
+            Window owner,
+            string message,
+            Func<CancellationToken, Action<double>, Task> action,
+            bool cancellable = true)
+        {
+            if (owner is null) throw new ArgumentNullException(nameof(owner));
+            if (action is null) throw new ArgumentNullException(nameof(action));
+
+            // UIスレッドで動かす
+            if (!owner.Dispatcher.CheckAccess())
+            {
+                await owner.Dispatcher.InvokeAsync(() => { });
+            }
+
+            using var cts = new CancellationTokenSource();
+
+            var win = new BusyWindow(message, cancellable, cts) { Owner = owner };
+
+            var prevEnabled = owner.IsEnabled;
+            owner.IsEnabled = false;
+
+            void report(double value)
+            {
+                // 0..100 に丸める
+                if (value < 0) value = 0;
+                if (value > 100) value = 100;
+
+                // UI更新はDispatcherで
+                win.Dispatcher.Invoke(() =>
+                {
+                    win.VM.IsIndeterminate = false;
+                    win.VM.ProgressValue = value;
+                    win.VM.ProgressText = $"{value:0}%";
+                });
+            }
+
+            try
+            {
+                win.Show();
+                await action(cts.Token, report);
+            }
+            catch (OperationCanceledException)
+            {
+                // キャンセルはここで握る or 呼び元へ投げる、どちらでもOK
+            }
+            finally
+            {
+                try { win.Close(); } catch { /* ignore */ }
+                owner.IsEnabled = prevEnabled;
+            }
+        }
+    }
+}
+
+<Window x:Class="YourApp.BusyWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Processing..."
+        Width="360" Height="170"
+        WindowStyle="ToolWindow"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Topmost="True">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="{Binding Message}" FontSize="14" Margin="0,0,0,10"/>
+
+        <ProgressBar Grid.Row="1"
+                     Height="16"
+                     IsIndeterminate="{Binding IsIndeterminate}"
+                     Minimum="0" Maximum="100"
+                     Value="{Binding ProgressValue}"
+                     Margin="0,0,0,12"/>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <TextBlock Text="{Binding ProgressText}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <Button Content="Cancel" Width="90"
+                    IsEnabled="{Binding IsCancellable}"
+                    Click="Cancel_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
+
+
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
