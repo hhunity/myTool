@@ -1,3 +1,115 @@
+
+using System;
+using System.Threading;
+
+public sealed class EndpointStore
+{
+    // 変更通知（必要ないなら消してOK）
+    public event EventHandler<Uri>? BaseUriChanged;
+
+    // “現在値”をロックなしで読むために volatile + Interlocked を使う
+    private Uri _baseUri;
+
+    public EndpointStore(string defaultBaseUrl = "http://localhost:8080/")
+    {
+        if (!Uri.TryCreate(defaultBaseUrl, UriKind.Absolute, out var uri))
+            uri = new Uri("http://localhost:8080/");
+
+        _baseUri = NormalizeBaseUri(uri);
+    }
+
+    /// <summary>
+    /// 現在のBaseUri（常に末尾スラッシュ付き）
+    /// </summary>
+    public Uri BaseUri => Volatile.Read(ref _baseUri);
+
+    /// <summary>
+    /// GUI入力文字列を検証して BaseUri を更新する（成功時 true）
+    /// </summary>
+    public bool TrySetBaseUrl(string? text, out string? error)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            error = "URL が空です。例: http://localhost:8080/";
+            return false;
+        }
+
+        if (!Uri.TryCreate(text.Trim(), UriKind.Absolute, out var uri))
+        {
+            error = "URLの形式が不正です。例: http://localhost:8080/";
+            return false;
+        }
+
+        // 必要なら http/https のみに制限
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+        {
+            error = "http または https の URL を入力してください。";
+            return false;
+        }
+
+        // 任意: ホスト必須（http://:8080/ みたいなのを弾く）
+        if (string.IsNullOrWhiteSpace(uri.Host))
+        {
+            error = "ホスト名がありません。例: http://localhost:8080/";
+            return false;
+        }
+
+        var normalized = NormalizeBaseUri(uri);
+
+        // 変化がないなら通知しない
+        var prev = Interlocked.Exchange(ref _baseUri, normalized);
+        if (!UriEquals(prev, normalized))
+        {
+            BaseUriChanged?.Invoke(this, normalized);
+        }
+
+        error = null;
+        return true;
+    }
+
+    /// <summary>
+    /// 例外を投げる版（内部用）
+    /// </summary>
+    public void SetBaseUri(Uri uri)
+    {
+        if (uri is null) throw new ArgumentNullException(nameof(uri));
+        if (!uri.IsAbsoluteUri) throw new ArgumentException("Absolute URI が必要です。", nameof(uri));
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            throw new ArgumentException("http/https のみ対応です。", nameof(uri));
+
+        var normalized = NormalizeBaseUri(uri);
+        var prev = Interlocked.Exchange(ref _baseUri, normalized);
+        if (!UriEquals(prev, normalized))
+        {
+            BaseUriChanged?.Invoke(this, normalized);
+        }
+    }
+
+    /// <summary>
+    /// ベースURIと相対パスから絶対URIを作る（スラッシュ事故を回避）
+    /// </summary>
+    public Uri Combine(string relativePath)
+    {
+        if (relativePath is null) throw new ArgumentNullException(nameof(relativePath));
+        return new Uri(BaseUri, relativePath);
+    }
+
+    private static Uri NormalizeBaseUri(Uri uri)
+    {
+        // fragment/query はベースとしては不要なことが多いので落とす（必要なら消してOK）
+        var b = new UriBuilder(uri) { Fragment = "", Query = "" };
+
+        // 末尾スラッシュを保証（"http://x:8080" → "http://x:8080/")
+        var s = b.Uri.ToString();
+        if (!s.EndsWith("/")) s += "/";
+
+        return new Uri(s, UriKind.Absolute);
+    }
+
+    private static bool UriEquals(Uri a, Uri b)
+        => string.Equals(a.ToString(), b.ToString(), StringComparison.OrdinalIgnoreCase);
+}
+
 using System;
 using System.Collections.Generic;
 using System.IO;
