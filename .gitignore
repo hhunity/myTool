@@ -8,6 +8,7 @@ Makefile
 *.cmake
 vcpkg/
 dist/frames
+dist
 
 # === IDE-specific ===
 .vscode/
