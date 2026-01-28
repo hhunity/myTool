@@ -1,3 +1,35 @@
+using System.Windows;
+
+public sealed class StartParam<T>
+{
+    public Window Owner { get; init; } = null!;
+    public T? Item { get; init; }
+}
+
+using System;
+using System.Globalization;
+using System.Windows;
+using System.Windows.Data;
+
+public sealed class StartParamConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        var owner = values.Length > 0 ? values[0] as Window : null;
+        if (owner is null) return Binding.DoNothing;
+
+        // SelectedItem は行の型に応じて入る（ここでは object として受けてOK）
+        var item = values.Length > 1 ? values[1] : null;
+
+        // ジェネリックはXAMLで扱いにくいので、ここでは object の StartParam を返す
+        return new StartParam<object> { Owner = owner, Item = item };
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+
 
 using System;
 using System.ComponentModel;
