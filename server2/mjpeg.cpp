@@ -28,6 +28,50 @@ namespace fs = std::filesystem;
 
 LatestJpegStore g_jpeg;
 
+#include <turbojpeg.h>
+#include <vector>
+#include <stdexcept>
+#include <cstdint>
+
+std::vector<uint8_t> EncodeJpegGray_TurboJpeg(
+    const uint8_t* gray, int width, int height,
+    int strideBytes, int quality /*0-100*/ )
+{
+    tjhandle h = tjInitCompress();
+    if (!h) throw std::runtime_error("tjInitCompress failed");
+
+    unsigned char* jpegBuf = nullptr;
+    unsigned long jpegSize = 0;
+
+    // 重要: pixelFormat = TJPF_GRAY, subsamp = TJSAMP_GRAY
+    int r = tjCompress2(
+        h,
+        gray, width, strideBytes, height,
+        TJPF_GRAY,
+        &jpegBuf, &jpegSize,
+        TJSAMP_GRAY,
+        quality,
+        TJFLAG_FASTDCT
+    );
+
+    if (r != 0) {
+        tjDestroy(h);
+        throw std::runtime_error(std::string("tjCompress2 failed: ") + tjGetErrorStr());
+    }
+
+    std::vector<uint8_t> out(jpegBuf, jpegBuf + jpegSize);
+    tjFree(jpegBuf);
+    tjDestroy(h);
+    return out;
+}
+
+//find_package(JPEG REQUIRED) # ではなく turbojpeg を使うならパッケージ名は環境次第
+//# vcpkg: libjpeg-turbo
+//find_package(libjpeg-turbo CONFIG REQUIRED)
+//target_link_libraries(your_target PRIVATE libjpeg-turbo::turbojpeg)
+
+
+
 // 取り込み側：最新JPEGを更新（jpeg_bytes はバイナリ）
 void set_latest_jpeg(std::string jpeg_bytes) {
   auto p = std::make_shared<std::string>(std::move(jpeg_bytes)); // ここで1回だけ確保
